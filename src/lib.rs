@@ -1,7 +1,7 @@
-// TODO : Test on Windows.
-
 use std::ffi::{OsString, OsStr};
+use std::io::{Error as IOError, ErrorKind, Result as IOResult};
 use std::path::{Path, Component};
+use std::fs::metadata;
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -11,6 +11,8 @@ pub enum PathError {
     NonexistentParent,
     NonUtf8,
     WildcardInParent,
+    IOError(ErrorKind),
+    RegexError(String),
 }
 
 pub trait TextIOHandler {
@@ -71,9 +73,11 @@ impl TextIOHandler for FileTextHandler {
         // If any but the last part of the path has wildcards, it's invalid.
         // Return an Err.
         let mut is_last = true;
+        let mut last_part:String = String::from("");
 
         for c in path.components().rev() {
-            // Debug
+            
+            // #[cfg(test)]
             println!("component: {:?}", c);
 
             match c {
@@ -83,6 +87,17 @@ impl TextIOHandler for FileTextHandler {
                     if (!is_last) && contains_wildcards(part_str)? {
                         return Err(PathError::WildcardInParent);
                     }
+
+                    if is_last {
+                        match part_str.to_str() {
+                            None => {
+                                return Err(PathError::NonUtf8);
+                            },
+                            Some(lpstr) => {
+                                last_part = lpstr.to_string();
+                            },
+                        };
+                    }
                 },
                 Component::Prefix(ref prefix_cmp) => {
                     let pcstr = prefix_cmp.as_os_str();
@@ -91,6 +106,16 @@ impl TextIOHandler for FileTextHandler {
                         return Err(PathError::WildcardInParent);
                     }
 
+                    if is_last {
+                        match pcstr.to_str() {
+                            None => {
+                                return Err(PathError::NonUtf8);
+                            },
+                            Some(lpstr) => {
+                                last_part = lpstr.to_string();
+                            },
+                        }
+                    }
                 },
             }
 
@@ -110,7 +135,72 @@ impl TextIOHandler for FileTextHandler {
         }
 
         // Get all file entries in the directory.
-        // Return all files in the directory that match the global path.
+        match path.read_dir() {
+            Err(io_error) => return Err(PathError::IOError(io_error.kind())), 
+            Ok(read_dir) => {
+                let rgx_str = format!("^{}$", last_part.replace(".", r"\.").replace("*", ".+").replace("?", "."));
+
+                // #[cfg(test)]
+                println!("rgx_str : {}", rgx_str);
+
+                let rgx = match Regex::new(&rgx_str) {
+                    Err(rgxerr) => return Err(PathError::RegexError(format!("{}", rgxerr))),
+                    Ok(r) => r,
+                };
+
+                // Return all files in the directory that match the global path.
+                outcome = read_dir.filter_map(|entry_result| {
+
+                    match entry_result {
+                        Err(_) => None,
+                        Ok(entry) => {
+
+                            match entry.file_type() {
+                                Err(_) => None,
+                                Ok(ft) => {
+
+                                    let candidate = if ft.is_file() {
+                                        Some(entry.file_name())
+                                    } else if ft.is_symlink() {
+
+                                        match metadata(entry.path()) {
+                                            Err(_) => None,
+                                            Ok(metadt) => {
+
+                                                if metadt.is_file() {
+                                                    Some(entry.file_name())
+                                                } else {
+                                                    None
+                                                }
+                                            },
+                                        }
+                                    } else {
+                                        None
+                                    };
+
+                                    // Filter on file name against global name having wildcards.
+                                    match candidate {
+                                        None => None,
+                                        Some(fname) => {
+                                            match fname.to_str() {
+                                                None => None,
+                                                Some(fnm) => {
+                                                    if rgx.is_match(fnm) {
+                                                        Some(entry.path().into_os_string())
+                                                    } else {
+                                                        None
+                                                    }
+                                                },
+                                            }
+                                        },
+                                    }
+                                },
+                            }
+                        },
+                    }
+                }).collect();
+            },
+        }
 
         Ok(outcome)
     }
@@ -161,7 +251,7 @@ mod tests {
     #[test]
     fn file_th_list_names_wildcards_in_filename() {
         let fth = FileTextHandler::new();
-        let outcome = fth.list_names(&OsString::from("/sites/myPics/test*.mpc"));
+        let outcome = fth.list_names(&OsString::from("/sites/myPics/nonexistent/test*.mpc"));
 
         assert_ne!(Err(PathError::WildcardInParent), outcome);
     }
