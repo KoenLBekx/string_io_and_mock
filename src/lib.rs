@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ffi::{OsString, OsStr};
 use std::io::{Error as IOError, ErrorKind, Result as IOResult};
 use std::path::{Path, Component};
@@ -18,7 +19,7 @@ pub enum PathError {
 pub trait TextIOHandler {
     fn list_names(&self, global_name: &OsStr) -> Result<Vec<OsString>, PathError>;
     fn read_text(&self, name: &OsStr) -> Result<String, String>;
-    fn write_text(&self, name: &OsStr, content: String) -> Result<(), String>;
+    fn write_text(&mut self, name: &OsStr, content: String) -> Result<(), String>;
 }
 
 fn contains_wildcards(name: &OsStr) -> Result<bool, PathError> {
@@ -29,10 +30,10 @@ fn contains_wildcards(name: &OsStr) -> Result<bool, PathError> {
             lazy_static! {
                 // unwrap() won't panic at runtime on this regex pattern -
                 // this is proven by unit tests.
-                static ref rgx:Regex = Regex::new(r"[?\*]").unwrap();
+                static ref RGX:Regex = Regex::new(r"[?\*]").unwrap();
             }
 
-            Ok(rgx.is_match(name_str))
+            Ok(RGX.is_match(name_str))
         },
     }
 }
@@ -77,8 +78,8 @@ impl TextIOHandler for FileTextHandler {
 
         for c in path.components().rev() {
             
-            // #[cfg(test)]
-            println!("component: {:?}", c);
+            // Debug
+            // println!("component: {:?}", c);
 
             match c {
                 Component::RootDir | Component::CurDir | Component::ParentDir => (),
@@ -140,8 +141,8 @@ impl TextIOHandler for FileTextHandler {
             Ok(read_dir) => {
                 let rgx_str = format!("^{}$", last_part.replace(".", r"\.").replace("*", ".+").replace("?", "."));
 
-                // #[cfg(test)]
-                println!("rgx_str : {}", rgx_str);
+                // Debug
+                // println!("rgx_str : {}", rgx_str);
 
                 let rgx = match Regex::new(&rgx_str) {
                     Err(rgxerr) => return Err(PathError::RegexError(format!("{}", rgxerr))),
@@ -210,8 +211,45 @@ impl TextIOHandler for FileTextHandler {
         Ok(String::from("dummy"))
     }
 
-    fn write_text(&self, name: &OsStr, content: String) -> Result<(), String> {
+    fn write_text(&mut self, name: &OsStr, content: String) -> Result<(), String> {
         // TODO : implement
+        Ok(())
+    }
+}
+
+pub struct MockTextHandler {
+    texts: HashMap<OsString, String>,
+}
+impl MockTextHandler {
+    fn new() -> Self {
+        MockTextHandler {
+            texts: HashMap::new(),
+        }
+    }
+}
+impl TextIOHandler for MockTextHandler {
+    fn list_names(&self, global_name: &OsStr) -> Result<Vec<OsString>, PathError> {
+        let glob = global_name.to_os_string();
+
+        if !contains_wildcards(&global_name)? {
+            if self.texts.contains_key(&glob) {
+                return Ok(vec![glob]);
+            } else {
+                return Ok(Vec::<OsString>::new());
+            }
+        }
+
+        // TODO : implement further.
+        Ok(Vec::<OsString>::new())
+    }
+
+    fn read_text(&self, name: &OsStr) -> Result<String, String> {
+        // TODO : implement
+        Ok(String::from("dummy"))
+    }
+
+    fn write_text(&mut self, name: &OsStr, content: String) -> Result<(), String> {
+        self.texts.insert(name.to_os_string(), content);
         Ok(())
     }
 }
@@ -270,5 +308,28 @@ mod tests {
         let outcome = fth.list_names(&OsString::from(r"?:/sites/myPics/test.mpc"));
 
         assert_eq!(Err(PathError::WildcardInParent), outcome);
+    }
+
+    #[test]
+    fn mock_list_names_contained_no_wildcards() {
+        let txt = String::from("As I came down by Fiddichside on a May morning ...");
+        let key = OsStr::new("Auchindoon");
+
+        let mut mock = MockTextHandler::new();
+        mock.write_text(&key, txt.clone());
+
+        let list = mock.list_names(&key).unwrap();
+        assert_eq!(1, list.len());
+        assert_eq!(&key, &list[0].as_os_str());
+    }
+
+    #[test]
+    fn mock_list_names_missing_no_wildcards() {
+        let key = OsStr::new("Auchindoon");
+
+        let mock = MockTextHandler::new();
+
+        let list = mock.list_names(&key).unwrap();
+        assert_eq!(0, list.len());
     }
 }
