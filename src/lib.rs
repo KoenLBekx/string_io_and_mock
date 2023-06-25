@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::ffi::{OsString, OsStr};
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Result as IoResult};
 use std::path::{Path, Component};
-use std::fs::metadata;
+use std::fs::{metadata, read_to_string, write};
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -18,8 +18,8 @@ pub enum PathError {
 
 pub trait TextIOHandler {
     fn list_names(&self, global_name: &OsStr) -> Result<Vec<OsString>, PathError>;
-    fn read_text(&self, name: &OsStr) -> Result<String, String>;
-    fn write_text(&mut self, name: &OsStr, content: String) -> Result<(), String>;
+    fn read_text(&self, name: &OsStr) -> IoResult<String>;
+    fn write_text(&mut self, name: &OsStr, content: String) -> IoResult<()>;
 }
 
 fn contains_wildcards(name: &OsStr) -> Result<bool, PathError> {
@@ -206,14 +206,15 @@ impl TextIOHandler for FileTextHandler {
         Ok(outcome)
     }
 
-    fn read_text(&self, name: &OsStr) -> Result<String, String> {
-        // TODO : implement
-        Ok(String::from("dummy"))
+    fn read_text(&self, name: &OsStr) -> IoResult<String> {
+        read_to_string(name)
     }
 
-    fn write_text(&mut self, name: &OsStr, content: String) -> Result<(), String> {
-        // TODO : implement
-        Ok(())
+    fn write_text(&mut self, name: &OsStr, content: String) -> IoResult<()> {
+        match write(name, content) {
+            Ok(_) => Ok(()),
+            Err(io_err) => Err(io_err),
+        }
     }
 }
 
@@ -267,12 +268,12 @@ impl TextIOHandler for MockTextHandler {
         }
     }
 
-    fn read_text(&self, name: &OsStr) -> Result<String, String> {
+    fn read_text(&self, name: &OsStr) -> IoResult<String> {
         // TODO : implement
         Ok(String::from("dummy"))
     }
 
-    fn write_text(&mut self, name: &OsStr, content: String) -> Result<(), String> {
+    fn write_text(&mut self, name: &OsStr, content: String) -> IoResult<()> {
         self.texts.insert(name.to_os_string(), content);
         Ok(())
     }
