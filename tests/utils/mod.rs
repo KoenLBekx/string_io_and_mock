@@ -3,10 +3,10 @@ use std::fs::{create_dir, File, remove_dir_all};
 use std::path::Path;
 use std::str::FromStr;
 
-pub const testfiles_dir: &str = "./tests/playground";
+pub const TESTFILES_DIR: &str = "./tests/playground";
 
 pub fn ensure_playground(remove_first: bool) -> OsString {
-    let dir_path = Path::new(&testfiles_dir);
+    let dir_path = Path::new(&TESTFILES_DIR);
 
     if remove_first {
        remove_dir_all(&dir_path).unwrap(); 
@@ -16,7 +16,7 @@ pub fn ensure_playground(remove_first: bool) -> OsString {
         create_dir(&dir_path).unwrap();
     }
 
-    OsString::from_str(testfiles_dir).unwrap()
+    OsString::from_str(TESTFILES_DIR).unwrap()
 }
 
 pub fn ensure_file(name: &OsStr) -> File {

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::ffi::{OsString, OsStr};
-use std::io::{Error as IOError, ErrorKind, Result as IOResult};
+use std::io::ErrorKind;
 use std::path::{Path, Component};
 use std::fs::metadata;
 use lazy_static::lazy_static;
@@ -139,7 +139,7 @@ impl TextIOHandler for FileTextHandler {
         match path.read_dir() {
             Err(io_error) => return Err(PathError::IOError(io_error.kind())), 
             Ok(read_dir) => {
-                let rgx_str = format!("^{}$", last_part.replace(".", r"\.").replace("*", ".+").replace("?", "."));
+                let rgx_str = format!("^{}$", last_part.replace(".", r"\.").replace("*", ".*").replace("?", "."));
 
                 // Debug
                 // println!("rgx_str : {}", rgx_str);
@@ -221,7 +221,7 @@ pub struct MockTextHandler {
     texts: HashMap<OsString, String>,
 }
 impl MockTextHandler {
-    fn new() -> Self {
+    pub fn new() -> Self {
         MockTextHandler {
             texts: HashMap::new(),
         }
@@ -239,8 +239,32 @@ impl TextIOHandler for MockTextHandler {
             }
         }
 
-        // TODO : implement further.
-        Ok(Vec::<OsString>::new())
+        match global_name.to_str() {
+            None => Err(PathError::NonUtf8),
+            Some(gstr) => {
+                let rgx_str = format!("^{}$", gstr.replace("*", ".*").replace("?", "."));
+
+                let rgx = match Regex::new(&rgx_str) {
+                    Err(rgxerr) => return Err(PathError::RegexError(format!("{}", rgxerr))),
+                    Ok(r) => r,
+                };
+
+                let outcome = self.texts.keys().filter_map(|key| {
+                    match key.to_str() {
+                        None => None,
+                        Some(knm) => {
+                            if rgx.is_match(knm) {
+                                Some(key.to_os_string())
+                            } else {
+                                None
+                            }
+                        },
+                    }
+                }).collect();
+
+                Ok(outcome)
+            },
+        }
     }
 
     fn read_text(&self, name: &OsStr) -> Result<String, String> {
@@ -316,7 +340,7 @@ mod tests {
         let key = OsStr::new("Auchindoon");
 
         let mut mock = MockTextHandler::new();
-        mock.write_text(&key, txt.clone());
+        mock.write_text(&key, txt.clone()).unwrap();
 
         let list = mock.list_names(&key).unwrap();
         assert_eq!(1, list.len());
@@ -330,6 +354,44 @@ mod tests {
         let mock = MockTextHandler::new();
 
         let list = mock.list_names(&key).unwrap();
+        assert_eq!(0, list.len());
+    }
+
+    #[test]
+    fn mock_list_names_wildcards() {
+        let txt = String::from("As I came down by Fiddichside on a May morning ...");
+        let key1 = OsStr::new("The Burning of Auchindoon");
+        let key2 = OsStr::new("Auchindoon was in a blaze");
+        let key3 = OsStr::new("Willy MacIntosh");
+
+        let mut mock = MockTextHandler::new();
+        mock.write_text(&key1, txt.clone()).unwrap();
+        mock.write_text(&key2, txt.clone()).unwrap();
+        mock.write_text(&key3, txt.clone()).unwrap();
+
+        let global = OsStr::new("*Auchindoon*");
+
+        let list = mock.list_names(&global).unwrap();
+        assert_eq!(2, list.len());
+        assert!(list.iter().any(|k| k == key1));
+        assert!(list.iter().any(|k| k == key2));
+    }
+
+    #[test]
+    fn mock_list_names_wildcards_none() {
+        let txt = String::from("As I came down by Fiddichside on a May morning ...");
+        let key1 = OsStr::new("The Burning of Auchindoon");
+        let key2 = OsStr::new("Auchindoon was in a blaze");
+        let key3 = OsStr::new("Willy MacIntosh");
+
+        let mut mock = MockTextHandler::new();
+        mock.write_text(&key1, txt.clone()).unwrap();
+        mock.write_text(&key2, txt.clone()).unwrap();
+        mock.write_text(&key3, txt.clone()).unwrap();
+
+        let global = OsStr::new("*Strathspey*");
+
+        let list = mock.list_names(&global).unwrap();
         assert_eq!(0, list.len());
     }
 }
