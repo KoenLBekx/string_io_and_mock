@@ -1,6 +1,20 @@
+//! This crate provides a struct [`FileTextHandler`] that acts as a mockable layer over a file
+//! system. It provides write, read and inventory operations that are required by the [`TextIOHandler`]
+//! trait :
+//! - method `write_text` writes String content to a file;
+//! - method `read_text` reads String content from a file;
+//! - method `list_names` lists all file paths corresponding to a file path passed as argument.
+//! This argument file path may contain * and ? wildcards.
+//!
+//! The *Text* in the names of the trait and structs mean that these entities are only meant to handle [`String`] content, as is evident from the signatures of the trait's methods.
+//!
+//! For unit tests - or for other applications - a mock [`MockTextHandler`] is available that also
+//! implements the [`TextIOHandler`] trait, but doesn't access any file system. It stores it texts in
+//! a [`HashMap`] instead.
+
 use std::collections::HashMap;
 use std::ffi::{OsString, OsStr};
-use std::io::{ErrorKind, Result as IoResult};
+use std::io::{Error as IoError, ErrorKind, Result as IoResult};
 use std::path::{Path, Component};
 use std::fs::{metadata, read_to_string, write};
 use lazy_static::lazy_static;
@@ -16,6 +30,11 @@ pub enum PathError {
     RegexError(String),
 }
 
+/// Implementors provide the ability to accept [`std::string::String`] content associated with an [`std::ffi::OsStr`] name, as can be expected from entities mediating a file system or their mocks and simulators.
+///
+/// However, note that these [`OsStr`] names have to consist of valid UTF-8 strings, as they have to
+/// be able to be converted to [`std::string::String`]s in order to be searched for wildcards (? and
+/// *) and to be used as, or tested by, [`regex::Regex`]s. If not, a [`PathError::NonUtf8`] will ensue.
 pub trait TextIOHandler {
     fn list_names(&self, global_name: &OsStr) -> Result<Vec<OsString>, PathError>;
     fn read_text(&self, name: &OsStr) -> IoResult<String>;
@@ -269,8 +288,10 @@ impl TextIOHandler for MockTextHandler {
     }
 
     fn read_text(&self, name: &OsStr) -> IoResult<String> {
-        // TODO : implement
-        Ok(String::from("dummy"))
+        match self.texts.get(&name.to_os_string()) {
+            None => Err(IoError::from(ErrorKind::NotFound)),
+            Some(content) => Ok(content.clone()),
+        }
     }
 
     fn write_text(&mut self, name: &OsStr, content: String) -> IoResult<()> {
@@ -394,5 +415,45 @@ mod tests {
 
         let list = mock.list_names(&global).unwrap();
         assert_eq!(0, list.len());
+    }
+
+    #[test]
+    fn mock_read_write() {
+        let txt = String::from("\
+As I came down by Fiddichside on a May morning
+I spied Willy MacIntosh an hour before the dawning.
+Turn again, turn again, turn again I bid thee,
+If ye'll burn Auchindoon, Huntley he will heed thee.
+
+- Heed me or hang me, that will never fear me.
+I'll burn Auchindoon ere the life will leave me.
+
+As I came down by Fiddichside on a May morning
+Auchindoon was in a blaze an hour before the dawning.
+Crawing, crawing, for all your crews are crawing,
+you taint your crops and burnt your wings
+an hour before the dawning.
+
+As I came down by Fiddichside on a May morning
+I spied Willy MacIntosh an hour before the dawning.
+Hanging, hanging, ay the boy was hanging,
+but the smoke of Auchindoon
+through the air was rising.
+");
+
+        let key = OsStr::new("Auchindoon");
+        let mut mock = MockTextHandler::new();
+        mock.write_text(&key, txt.clone()).unwrap();
+        let read_back = mock.read_text(&key).unwrap();
+
+        assert_eq!(txt, read_back);
+    }
+
+    #[test]
+    fn mock_read_missing() {
+        let mock = MockTextHandler::new();
+        let result = mock.read_text(&OsStr::new("Whatever"));
+
+        assert!(result.is_err_and(|ob| ob.kind() == ErrorKind::NotFound));
     }
 }

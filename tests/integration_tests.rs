@@ -1,6 +1,6 @@
 use std::ffi::OsString;
 use serial_test::file_serial;
-use file_io_and_mock::{TextIOHandler, FileTextHandler, PathError};
+use string_io_and_mock::{TextIOHandler, FileTextHandler, PathError};
 
 mod utils;
 
