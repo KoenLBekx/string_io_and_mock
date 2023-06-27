@@ -142,6 +142,25 @@ fn list_names_directories_are_ignored() {
 
 #[test]
 #[file_serial]
+fn overwrite() {
+    let playground_name = utils::ensure_playground(true);
+    let mut file_name = playground_name.clone();
+    file_name.push(&OsString::from("/TheWell.txt"));
+
+    let txt1 = String::from("Well, about the well :");
+    let txt2 = String::from("One can move the city, but not the well.");
+
+    let mut fth = FileTextHandler::new();
+    fth.write_text(&file_name, txt1.clone()).unwrap();
+    fth.write_text(&file_name, txt2.clone()).unwrap();
+
+    let read_back = fth.read_text(&file_name).unwrap();
+
+    assert_eq!(txt2, read_back);
+}
+
+#[test]
+#[file_serial]
 fn read_and_write() {
     let playground_name = utils::ensure_playground(true);
     let mut file_name = playground_name.clone();

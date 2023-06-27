@@ -1,3 +1,7 @@
+// TODO : have all methods return a std::result::Result<Appropriate, PathError> value.
+// TODO : have write_text methods check for valid UTF-8 names.
+// TODO : complete documentation of entities.
+
 //! This crate provides a struct [`FileTextHandler`] that acts as a mockable layer over a file
 //! system. It provides write, read and inventory operations that are required by the [`TextIOHandler`]
 //! trait :
@@ -450,10 +454,29 @@ through the air was rising.
     }
 
     #[test]
+    fn mock_overwrite() {
+        let txt1 = String::from("Well, about the well :");
+        let txt2 = String::from("One can move the city, but not the well.");
+
+        let key = OsStr::new("The Well");
+        let mut mock = MockTextHandler::new();
+        mock.write_text(&key, txt1.clone()).unwrap();
+        mock.write_text(&key, txt2.clone()).unwrap();
+        let read_back = mock.read_text(&key).unwrap();
+
+        assert_eq!(txt2, read_back);
+    }
+
+    #[test]
     fn mock_read_missing() {
         let mock = MockTextHandler::new();
         let result = mock.read_text(&OsStr::new("Whatever"));
 
-        assert!(result.is_err_and(|ob| ob.kind() == ErrorKind::NotFound));
+        match result {
+            Ok(_) => panic!("Method read_text should return an Err if no text with the passed name is found."),
+            Err(err) => {
+                assert_eq!(ErrorKind::NotFound, err.kind());
+            },
+        }
     }
 }
