@@ -1,5 +1,5 @@
-use std::ffi::{OsStr, OsString};
-use std::fs::{create_dir, File, remove_dir_all};
+use std::ffi::OsString;
+use std::fs::{create_dir, remove_dir_all};
 use std::path::Path;
 use std::str::FromStr;
 
@@ -17,16 +17,4 @@ pub fn ensure_playground(remove_first: bool) -> OsString {
     }
 
     OsString::from_str(TESTFILES_DIR).unwrap()
-}
-
-pub fn ensure_file(name: &OsStr) -> File {
-    File::create(name).unwrap()
-}
-
-pub fn ensure_dir(name: &OsStr) {
-    let dir_path = Path::new(name);
-
-    if !dir_path.is_dir() {
-        create_dir(&dir_path).unwrap();
-    }
 }
