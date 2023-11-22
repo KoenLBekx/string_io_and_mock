@@ -34,4 +34,4 @@ use string_io_and_mock::{FileTextHandler, MockTextHandler, TextIOHandler};
 
 ## Examples
 
-For examples of how to use these components in code, see the crate's code documentation or it's unit and integration tests.
+For examples of how to use these components in code, see the crate's code documentation or its unit and integration tests.

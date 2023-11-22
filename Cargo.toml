@@ -1,6 +1,6 @@
 [package]
 name = "string_io_and_mock"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 description = "A component providing write and read operations of strings in files, and its mock that does the same in a HashMap."
 license = "MIT OR Apache-2.0"
