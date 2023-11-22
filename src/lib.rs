@@ -36,30 +36,29 @@ pub trait TextIOHandler {
 /// use std::ffi::OsStr;
 /// use string_io_and_mock::{FileTextHandler, TextIOHandler};
 ///
-/// fn main()
-/// {
-///     let content = String::from(
-///         "Programming is to a large extent the art of correct definitions.");
+/// let content = String::from(
+///     "Programming is to a large extent the art of correct definitions.");
 ///
-///     let file_name = OsStr::new("tests/playground/myText.txt");
-///     let mut fth = FileTextHandler::new();
+/// let file_name = OsStr::new("tests/playground/myText.txt");
+/// let mut fth = FileTextHandler::new();
 ///
-///     fth.write_text(&file_name, content.clone()).unwrap();
+/// fth.write_text(&file_name, content.clone()).unwrap();
 ///
-///     // Not using the same FileTextHandler for reading back :
-///     // the persistency is provided by the file system.
-///     let other_fth = FileTextHandler::new();
-///     let read_back = other_fth.read_text(&file_name).unwrap();
+/// // Not using the same FileTextHandler for reading back :
+/// // the persistency is provided by the file system.
+/// let other_fth = FileTextHandler::new();
+/// let read_back = other_fth.read_text(&file_name).unwrap();
 ///
-///     assert_eq!(content, read_back);
-/// }
+/// assert_eq!(content, read_back);
 /// ```
+#[derive(Default)]
 pub struct FileTextHandler {}
 impl FileTextHandler {
     pub fn new() -> Self {
         FileTextHandler {}
     }
 }
+
 impl TextIOHandler for FileTextHandler {
 
     fn read_text(&self, name: &OsStr) -> IoResult<String> {
@@ -82,33 +81,31 @@ impl TextIOHandler for FileTextHandler {
 /// use std::ffi::OsStr;
 /// use string_io_and_mock::{MockTextHandler, TextIOHandler};
 ///
-/// fn main()
-/// {
-///     let content = String::from(
-///         "Programming is to a huge extent the art of correct definitions.");
+/// let content = String::from(
+///     "Programming is to a huge extent the art of correct definitions.");
 ///
-///     let file_name = OsStr::new("tests/playground/myText.txt");
-///     let mut mock = MockTextHandler::new();
+/// let file_name = OsStr::new("tests/playground/myText.txt");
+/// let mut mock = MockTextHandler::new();
 ///
-///     mock.write_text(&file_name, content.clone()).unwrap();
+/// mock.write_text(&file_name, content.clone()).unwrap();
 ///
-///     let read_back = mock.read_text(&file_name).unwrap();
-///     assert_eq!(content, read_back);
+/// let read_back = mock.read_text(&file_name).unwrap();
+/// assert_eq!(content, read_back);
 ///
-///     // Not using the same MockTextHandler for reading back will yield a "not found" error.
-///     // as MockTextHandler instances don't share their internal state.
-///     let other_mock = MockTextHandler::new();
-///     let read_result = other_mock.read_text(&file_name);
+/// // Not using the same MockTextHandler for reading back will yield a "not found" error.
+/// // as MockTextHandler instances don't share their internal state.
+/// let other_mock = MockTextHandler::new();
+/// let read_result = other_mock.read_text(&file_name);
 ///
-///     match read_result  {
-///         Ok(_) => panic!("MockTextHandler.read_file of a missing string should return a std::io::Error."),
-///         Err(err) => assert_eq!(err.kind(), ErrorKind::NotFound),
-///     }
+/// match read_result  {
+///     Ok(_) => panic!("MockTextHandler.read_file of a missing string should return a std::io::Error."),
+///     Err(err) => assert_eq!(err.kind(), ErrorKind::NotFound),
 /// }
 /// ```
 pub struct MockTextHandler {
     texts: HashMap<OsString, String>,
 }
+
 impl MockTextHandler {
     pub fn new() -> Self {
         MockTextHandler {
@@ -116,6 +113,13 @@ impl MockTextHandler {
         }
     }
 }
+
+impl Default for MockTextHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TextIOHandler for MockTextHandler {
 
     fn read_text(&self, name: &OsStr) -> IoResult<String> {
