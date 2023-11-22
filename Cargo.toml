@@ -2,8 +2,20 @@
 name = "string_io_and_mock"
 version = "1.0.0"
 edition = "2021"
+description = "A component providing write and read operations of strings in files, and its mock that does the same in a HashMap."
+license = "MIT OR Apache-2.0"
+authors = ["Koen Bekx <klbekx@gmail.com>"]
+categories = ["filesystem"]
+keywords = ["file", "string", "io", "mock"]
+readme = "README.md"
+repository = "https://github.com/KoenLBekx/string_io_and_mock"
+homepage = "https://github.com/KoenLBekx/string_io_and_mock"
+documentation = "https://docs.rs/string_io_and_mock"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 serial_test = {version = "2.0.0", features = ["file_locks"]}
+
+[badges]
+maintenance = { status = "passively-maintained" }

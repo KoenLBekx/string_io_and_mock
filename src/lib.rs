@@ -4,11 +4,15 @@
 //! - method `write_text` writes String content to a file or file system simulator;
 //! - method `read_text` reads String content from a file or file system simulator;
 //!
-//! The *Text* in the names of the trait and structs mean that these entities are only meant to handle [`String`] content, as is evident from the signatures of the trait's methods.
+//! The *Text* in the names of the trait and structs mean that these entities are only meant to handle **`String`** content, as is evident from the signatures of the trait's methods.
 //!
 //! For unit tests - or for other applications - a mock [`MockTextHandler`] is available that also
 //! implements the [`TextIOHandler`] trait, but doesn't access any file system. It stores it texts in
 //! a [`HashMap`] instead.
+//!
+//! This means that `MockTextHandler` is more than a mere mock: with its internal persistence, 
+//! it can serve as an application component in its own right,
+//! providing string storage in memory where file storage isn't needed.
 
 use std::collections::HashMap;
 use std::ffi::{OsString, OsStr};
@@ -25,7 +29,7 @@ pub trait TextIOHandler {
 /// FileTextHandler provides string read and write operations to file system files.
 /// It has no internal persistence, as this is provided by the underlying file system.
 /// Even so, calling it's write_text method still requires a FileTextHandler object
-/// to be declared as mutable, as the TextIOHandler interface imposes this
+/// to be declared as mutable, as the TextIOHandler trait imposes this
 /// so as to enable mocks to use internal persistence to write to their encapsulated state.
 /// # Examples
 /// ```
@@ -34,9 +38,11 @@ pub trait TextIOHandler {
 ///
 /// fn main()
 /// {
+///     let content = String::from(
+///         "Programming is to a large extent the art of correct definitions.");
+///
 ///     let file_name = OsStr::new("tests/playground/myText.txt");
 ///     let mut fth = FileTextHandler::new();
-///     let content = String::from("Programming is to a huge extent diorismatology : the art of correct definitions.");
 ///
 ///     fth.write_text(&file_name, content.clone()).unwrap();
 ///
@@ -78,14 +84,15 @@ impl TextIOHandler for FileTextHandler {
 ///
 /// fn main()
 /// {
+///     let content = String::from(
+///         "Programming is to a huge extent the art of correct definitions.");
+///
 ///     let file_name = OsStr::new("tests/playground/myText.txt");
 ///     let mut mock = MockTextHandler::new();
-///     let content = String::from("Programming is to a huge extent diorismatology : the art of correct definitions.");
 ///
 ///     mock.write_text(&file_name, content.clone()).unwrap();
 ///
 ///     let read_back = mock.read_text(&file_name).unwrap();
-///
 ///     assert_eq!(content, read_back);
 ///
 ///     // Not using the same MockTextHandler for reading back will yield a "not found" error.
