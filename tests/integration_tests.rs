@@ -15,7 +15,7 @@ fn overwrite() {
     let txt1 = String::from("Well, about the well :");
     let txt2 = String::from("One can move the city, but not the well.");
 
-    let mut fth = FileTextHandler::new();
+    let mut fth = FileTextHandler::default();
     fth.write_text(&file_name, txt1.clone()).unwrap();
     fth.write_text(&file_name, txt2.clone()).unwrap();
 

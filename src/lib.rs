@@ -164,7 +164,7 @@ through the air was rising.
 ");
 
         let key = OsStr::new("Auchindoon");
-        let mut mock = MockTextHandler::new();
+        let mut mock = MockTextHandler::default();
         mock.write_text(&key, txt.clone()).unwrap();
         let read_back = mock.read_text(&key).unwrap();
 
